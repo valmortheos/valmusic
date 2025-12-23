@@ -1,0 +1,183 @@
+
+import React, { useState } from 'react';
+import { ViewState, Song, UserProfile, LyricLine } from '../types';
+import HomeView from './HomeView';
+import { LibraryView, SettingsView } from './Views';
+import { AlbumView, ArtistView } from './LibraryViews';
+import { Search, Music, Play, X } from './Icons';
+
+interface MainContentProps {
+  view: ViewState;
+  userProfile: UserProfile;
+  setUserProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
+  songs: Song[];
+  currentSong: Song | null;
+  isPlaying: boolean;
+  playSong: (song: Song) => void;
+  setView: (view: ViewState) => void;
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  toggleFavorite: (id: string) => void;
+  deleteSong: (id: string) => void;
+  colorPalette?: string[];
+}
+
+// Sub-component untuk Pencarian Lokal
+const LocalSearchView = ({ 
+    songs, 
+    playSong, 
+    currentSong 
+}: { 
+    songs: Song[], 
+    playSong: (s: Song) => void, 
+    currentSong: Song | null 
+}) => {
+    const [query, setQuery] = useState('');
+
+    const filteredSongs = query.trim() === '' 
+        ? [] 
+        : songs.filter(song => 
+            song.title.toLowerCase().includes(query.toLowerCase()) || 
+            song.artist.toLowerCase().includes(query.toLowerCase()) ||
+            song.album.toLowerCase().includes(query.toLowerCase())
+          );
+
+    return (
+        <div className="pb-32 animate-fade-in flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Cari Musik</h2>
+            
+            <div className="relative mb-6">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                    <Search size={20} />
+                </div>
+                <input 
+                    type="text" 
+                    className="w-full pl-12 pr-10 py-4 bg-white border border-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:bg-white/80 shadow-sm text-gray-800 font-medium transition-all"
+                    placeholder="Judul lagu, artis, atau album..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    autoFocus
+                />
+                {query && (
+                    <button 
+                        onClick={() => setQuery('')}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                        <X size={18} />
+                    </button>
+                )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar">
+                {query.trim() === '' ? (
+                    <div className="flex flex-col items-center justify-center py-10 opacity-50 mt-10">
+                        <Search size={48} className="text-gray-300 mb-4" />
+                        <p className="text-gray-400 text-sm font-medium">Ketik untuk mencari di pustaka lokalmu</p>
+                    </div>
+                ) : filteredSongs.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400">
+                        <p>Tidak ditemukan hasil untuk "{query}"</p>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                         <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{filteredSongs.length} Hasil Ditemukan</p>
+                         </div>
+                         {filteredSongs.map((song) => (
+                            <div key={song.id} className={`flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 group ${currentSong?.id === song.id ? 'bg-[var(--color-primary)]/5' : ''}`}>
+                                <div className="flex-1 min-w-0 flex items-center" onClick={() => playSong(song)}>
+                                    <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden mr-4 flex-shrink-0 relative">
+                                        {song.coverArt ? <img src={song.coverArt} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-gray-300"><Music size={20}/></div>}
+                                    </div>
+                                    <div className="min-w-0 pr-4">
+                                        <div className={`font-bold text-sm truncate ${currentSong?.id === song.id ? 'text-[var(--color-primary)]' : 'text-gray-800'}`}>{song.title}</div>
+                                        <div className="text-xs text-gray-500 truncate">{song.artist}</div>
+                                    </div>
+                                </div>
+                                <button onClick={() => playSong(song)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-all">
+                                    <Play size={16} fill="currentColor" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const MainContent: React.FC<MainContentProps> = ({
+  view,
+  userProfile,
+  setUserProfile,
+  songs,
+  currentSong,
+  isPlaying,
+  playSong,
+  setView,
+  handleFileUpload,
+  toggleFavorite,
+  deleteSong,
+  colorPalette
+}) => {
+  return (
+    <div className="flex-1 min-h-0 max-w-6xl mx-auto w-full">
+      {view === ViewState.HOME && (
+        <HomeView 
+          userProfile={userProfile}
+          songs={songs}
+          currentSong={currentSong}
+          isPlaying={isPlaying}
+          playSong={playSong}
+          setView={setView}
+          handleFileUpload={handleFileUpload}
+          toggleFavorite={toggleFavorite}
+          colorPalette={colorPalette}
+        />
+      )}
+      
+      <div className="h-full overflow-y-auto no-scrollbar">
+        {view === ViewState.LIBRARY && (
+          <LibraryView 
+            songs={songs}
+            currentSong={currentSong}
+            playSong={playSong}
+            onDelete={deleteSong}
+            handleFileUpload={handleFileUpload}
+          />
+        )}
+
+        {view === ViewState.ALBUM && (
+          <AlbumView
+            songs={songs}
+            playSong={playSong}
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+          />
+        )}
+
+        {view === ViewState.ARTIST && (
+          <ArtistView
+            songs={songs}
+            playSong={playSong}
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+          />
+        )}
+        
+        {view === ViewState.SETTINGS && (
+          <SettingsView userProfile={userProfile} setUserProfile={setUserProfile} />
+        )}
+        
+        {view === ViewState.SEARCH && (
+            <LocalSearchView 
+                songs={songs} 
+                playSong={playSong} 
+                currentSong={currentSong} 
+            />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MainContent;
