@@ -1,12 +1,15 @@
 
+
+
 import React, { useState } from 'react';
 import { 
   Home, Library, Disc, Mic2, Settings, Upload, 
-  Music, Play, Pause, Search, User, Trash2, ListMusic, UserCheck
+  Music, Play, Pause, Search, User, Trash2, ListMusic, UserCheck, Cloud, AlertCircle
 } from './Icons';
 import { ViewState, Song, UserProfile } from '../types';
 import GenrePlaylist from './library/GenrePlaylist';
 import ArtistPlaylist from './library/ArtistPlaylist';
+import { Folder } from 'lucide-react'; // Import Icon Folder
 
 // --- NAVIGATION COMPONENT ---
 export const Navigation = ({ view, setView }: { view: ViewState, setView: (v: ViewState) => void }) => {
@@ -45,10 +48,12 @@ interface LibraryViewProps {
     currentSong: Song | null;
     playSong: (s: Song) => void;
     onDelete?: (id: string) => void;
-    handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; // Added prop
+    handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    handleFolderScan: () => void; // Prop baru
+    isScanning: boolean; // Prop baru
 }
 
-export const LibraryView: React.FC<LibraryViewProps> = React.memo(({ songs, currentSong, playSong, onDelete, handleFileUpload }) => {
+export const LibraryView: React.FC<LibraryViewProps> = React.memo(({ songs, currentSong, playSong, onDelete, handleFileUpload, handleFolderScan, isScanning }) => {
     // Menambahkan state tab 'artist'
     const [activeTab, setActiveTab] = useState<'all' | 'genre' | 'artist'>('all');
 
@@ -56,19 +61,35 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({ songs, curr
         <div className="pb-32 animate-fade-in">
            {/* Header & Controls */}
            <div className="flex flex-col gap-5 mb-6">
-               <div className="flex items-center justify-between">
+               <div className="flex items-center justify-between flex-wrap gap-2">
                    <h2 className="text-2xl font-bold text-gray-800">Pustaka Lagu</h2>
                    
-                   {/* Persistent Upload Button */}
-                   <label className="cursor-pointer bg-[var(--color-primary)] text-white px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 active:scale-95 group">
-                        <div className="bg-white/20 p-1 rounded-full group-hover:bg-white/30 transition-colors">
-                            <Upload size={16} />
-                        </div>
-                        <span className="hidden sm:inline">Tambah Musik</span>
-                        <span className="sm:hidden">Upload</span>
-                        {/* UPDATE ACCEPT ATTRIBUTE */}
-                        <input type="file" multiple accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.opus,.lrc,.txt" className="hidden" onChange={handleFileUpload} />
-                   </label>
+                   <div className="flex items-center gap-2">
+                       {/* Tombol Scan Folder (Baru) */}
+                       <button 
+                            onClick={handleFolderScan}
+                            disabled={isScanning}
+                            className={`bg-indigo-50 text-indigo-600 border border-indigo-100 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 active:scale-95 transition-all hover:bg-indigo-100 ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                       >
+                           {isScanning ? (
+                               <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                           ) : (
+                               <Folder size={16} />
+                           )}
+                           <span className="hidden sm:inline">Buka Folder</span>
+                           <span className="sm:hidden">Folder</span>
+                       </button>
+
+                       {/* Persistent Upload Button */}
+                       <label className="cursor-pointer bg-[var(--color-primary)] text-white px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 active:scale-95 group">
+                            <div className="bg-white/20 p-1 rounded-full group-hover:bg-white/30 transition-colors">
+                                <Upload size={16} />
+                            </div>
+                            <span className="hidden sm:inline">Upload File</span>
+                            <span className="sm:hidden">Upload</span>
+                            <input type="file" multiple accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.opus,.lrc,.txt" className="hidden" onChange={handleFileUpload} />
+                       </label>
+                   </div>
                </div>
                
                {/* Tab Switcher */}
@@ -100,7 +121,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({ songs, curr
                         <Music size={40} />
                     </div>
                     <p className="font-bold text-gray-700 text-lg mb-2">Pustaka Kosong</p>
-                    <p className="text-sm text-gray-400 max-w-[250px] leading-relaxed">Belum ada lagu. Tekan tombol <span className="font-bold text-[var(--color-primary)]">Upload</span> di atas untuk menambahkan musik lokal.</p>
+                    <p className="text-sm text-gray-400 max-w-[250px] leading-relaxed">Belum ada lagu. Gunakan tombol <span className="font-bold text-indigo-600">Buka Folder</span> untuk memindai penyimpanan secara otomatis.</p>
                </div>
            ) : (
              <>
@@ -149,14 +170,68 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({ songs, curr
 export const SettingsView = ({ userProfile, setUserProfile }: { userProfile: UserProfile, setUserProfile: any }) => (
     <div className="pb-32 animate-fade-in">
        <h2 className="text-2xl font-bold mb-6 text-gray-800">Pengaturan</h2>
-       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-6">
-          <h3 className="font-bold mb-4 flex items-center gap-2"><User size={20}/> Profil</h3>
-          <div className="flex gap-4">
-             <img src={userProfile.avatar} className="w-16 h-16 rounded-full object-cover" />
-             <div className="flex-1 space-y-2">
-               <input type="text" value={userProfile.name} onChange={e=>setUserProfile({...userProfile, name:e.target.value})} className="w-full border p-2 rounded-lg" placeholder="Nama" />
-               <input type="text" value={userProfile.avatar} onChange={e=>setUserProfile({...userProfile, avatar:e.target.value})} className="w-full border p-2 rounded-lg text-sm" placeholder="URL Avatar" />
-             </div>
+       
+       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-6 space-y-6">
+          {/* Profile Section */}
+          <div>
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-700"><User size={20}/> Profil Pengguna</h3>
+            <div className="flex gap-4">
+                <img src={userProfile.avatar} className="w-16 h-16 rounded-full object-cover border-2 border-gray-100" />
+                <div className="flex-1 space-y-2">
+                <input type="text" value={userProfile.name} onChange={e=>setUserProfile({...userProfile, name:e.target.value})} className="w-full border p-2 rounded-lg text-sm font-medium" placeholder="Nama Pengguna" />
+                <input type="text" value={userProfile.avatar} onChange={e=>setUserProfile({...userProfile, avatar:e.target.value})} className="w-full border p-2 rounded-lg text-sm" placeholder="URL Avatar" />
+                </div>
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 w-full"></div>
+
+          {/* Filter Logic Section */}
+          <div>
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-700"><AlertCircle size={20}/> Filter Audio</h3>
+            <div className="flex items-center justify-between mb-4">
+                <div>
+                    <p className="text-sm font-bold text-gray-800">Abaikan Audio Pendek</p>
+                    <p className="text-xs text-gray-500">Jangan tampilkan audio di bawah durasi tertentu (cth: rekaman WA/VN).</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={userProfile.settings?.enableDurationFilter || false}
+                        onChange={(e) => setUserProfile({
+                            ...userProfile, 
+                            settings: { ...userProfile.settings, enableDurationFilter: e.target.checked }
+                        })}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+                </label>
+            </div>
+
+            {userProfile.settings?.enableDurationFilter && (
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div className="flex justify-between mb-2">
+                        <span className="text-xs font-bold text-gray-500">Minimum Durasi</span>
+                        <span className="text-xs font-bold text-[var(--color-primary)]">{userProfile.settings.minDurationFilter} Detik</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="10" 
+                        max="300" 
+                        step="5"
+                        value={userProfile.settings.minDurationFilter}
+                        onChange={(e) => setUserProfile({
+                            ...userProfile,
+                            settings: { ...userProfile.settings, minDurationFilter: parseInt(e.target.value) }
+                        })}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-2 text-center">
+                        Audio yang lebih pendek dari {userProfile.settings.minDurationFilter} detik tidak akan muncul di Pustaka.
+                        <br/>(Perlu memutar lagu sekali untuk mendeteksi durasi akurat)
+                    </p>
+                </div>
+            )}
           </div>
        </div>
     </div>

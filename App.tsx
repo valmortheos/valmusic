@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { ViewState, LyricLine, Song } from './types';
@@ -37,7 +39,8 @@ const ValMusicApp: React.FC = () => {
   usePreloadedSongs(songs, setSongs);
 
   // --- Library Logic (sekarang bisa akses useToast karena di dalam Provider) ---
-  const { handleFileUpload } = useLibrary(songs, setSongs, playSong, currentSong);
+  // Added: handleFolderScan, isScanning
+  const { handleFileUpload, handleFolderScan, isScanning } = useLibrary(songs, setSongs, playSong, currentSong);
 
   // --- Sleep Timer Hook ---
   const { timeLeft, startTimer, cancelTimer } = useSleepTimer(() => {
@@ -87,6 +90,23 @@ const ValMusicApp: React.FC = () => {
     }
   };
 
+  // Update song duration in DB when audio loads successfully
+  const handleAudioReady = (d: number) => {
+      setDuration(d);
+      
+      // Update duration in DB if it was 0 (newly imported song)
+      if (currentSong && currentSong.duration === 0) {
+          const updatedSong = { ...currentSong, duration: d };
+          // Update State
+          setSongs(prev => prev.map(s => s.id === currentSong.id ? updatedSong : s));
+          setCurrentSong(updatedSong);
+          // Save to DB
+          if(!currentSong.id.startsWith('preloaded-')) {
+            saveSongToDB(updatedSong);
+          }
+      }
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[#f8fafc] text-[#0f172a] overflow-hidden font-sans selection:bg-[var(--color-primary)] selection:text-white transition-colors duration-700">
       <Navigation view={view} setView={setView} />
@@ -114,6 +134,8 @@ const ValMusicApp: React.FC = () => {
             toggleFavorite={toggleFavorite}
             deleteSong={deleteSong}
             colorPalette={colorPalette}
+            handleFolderScan={handleFolderScan}
+            isScanning={isScanning}
           />
         </main>
 
@@ -166,7 +188,7 @@ const ValMusicApp: React.FC = () => {
             url={currentSong.url}
             isPlaying={isPlaying}
             onFinish={() => handleNext(true)}
-            onReady={setDuration}
+            onReady={handleAudioReady}
             setWaveSurferRef={(ws) => waveSurferRef.current = ws}
           />
         )}

@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, UserProfile } from '../types';
 import { saveSongToDB, getAllSongsFromDB, deleteSongFromDB } from '../utils/db';
@@ -23,7 +24,11 @@ export const useAudioPlayer = () => {
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: 'Pengguna ValMusic',
     avatar: "https://picsum.photos/200/200",
-    themeColor: THEME_OPTIONS[0].hex
+    themeColor: THEME_OPTIONS[0].hex,
+    settings: {
+        minDurationFilter: 60, // Default 60 detik (1 menit)
+        enableDurationFilter: false // Default mati
+    }
   });
 
   // Load songs on mount

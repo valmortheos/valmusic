@@ -1,4 +1,6 @@
 
+
+
 import React, { useState } from 'react';
 import { ViewState, Song, UserProfile, LyricLine } from '../types';
 import HomeView from './HomeView';
@@ -19,6 +21,8 @@ interface MainContentProps {
   toggleFavorite: (id: string) => void;
   deleteSong: (id: string) => void;
   colorPalette?: string[];
+  handleFolderScan: () => void; // New Prop
+  isScanning: boolean; // New Prop
 }
 
 // Sub-component untuk Pencarian Lokal
@@ -117,14 +121,31 @@ const MainContent: React.FC<MainContentProps> = ({
   handleFileUpload,
   toggleFavorite,
   deleteSong,
-  colorPalette
+  colorPalette,
+  handleFolderScan,
+  isScanning
 }) => {
+  
+  // Logic Filter Durasi
+  // Kita filter list 'songs' yang dikirim ke child components
+  const filteredSongs = React.useMemo(() => {
+    if (!userProfile.settings?.enableDurationFilter) return songs;
+    
+    return songs.filter(song => {
+        // Jika duration 0 (belum pernah diputar/dimuat), kita tetap tampilkan dulu
+        // agar user bisa memutarnya. Setelah diputar, duration akan terupdate.
+        // Atau jika duration > minDuration.
+        const minDur = userProfile.settings.minDurationFilter;
+        return song.duration === 0 || song.duration >= minDur;
+    });
+  }, [songs, userProfile.settings]);
+
   return (
     <div className="flex-1 min-h-0 max-w-6xl mx-auto w-full">
       {view === ViewState.HOME && (
         <HomeView 
           userProfile={userProfile}
-          songs={songs}
+          songs={filteredSongs} // Use filtered
           currentSong={currentSong}
           isPlaying={isPlaying}
           playSong={playSong}
@@ -138,17 +159,19 @@ const MainContent: React.FC<MainContentProps> = ({
       <div className="h-full overflow-y-auto no-scrollbar">
         {view === ViewState.LIBRARY && (
           <LibraryView 
-            songs={songs}
+            songs={filteredSongs} // Use filtered
             currentSong={currentSong}
             playSong={playSong}
             onDelete={deleteSong}
             handleFileUpload={handleFileUpload}
+            handleFolderScan={handleFolderScan}
+            isScanning={isScanning}
           />
         )}
 
         {view === ViewState.ALBUM && (
           <AlbumView
-            songs={songs}
+            songs={filteredSongs} // Use filtered
             playSong={playSong}
             currentSong={currentSong}
             isPlaying={isPlaying}
@@ -157,7 +180,7 @@ const MainContent: React.FC<MainContentProps> = ({
 
         {view === ViewState.ARTIST && (
           <ArtistView
-            songs={songs}
+            songs={filteredSongs} // Use filtered
             playSong={playSong}
             currentSong={currentSong}
             isPlaying={isPlaying}
@@ -170,7 +193,7 @@ const MainContent: React.FC<MainContentProps> = ({
         
         {view === ViewState.SEARCH && (
             <LocalSearchView 
-                songs={songs} 
+                songs={filteredSongs} // Use filtered
                 playSong={playSong} 
                 currentSong={currentSong} 
             />

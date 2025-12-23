@@ -1,4 +1,5 @@
 
+
 export interface LyricLine {
   time: number; // in seconds
   text: string;
@@ -24,10 +25,16 @@ export interface Song {
   isOnline?: boolean; // New flag for online songs
 }
 
+export interface AppSettings {
+  minDurationFilter: number; // dalam detik (misal: 60 untuk 1 menit)
+  enableDurationFilter: boolean;
+}
+
 export interface UserProfile {
   name: string;
   avatar: string;
   themeColor: string; // Hex code
+  settings: AppSettings; // Added settings object
 }
 
 export enum ViewState {

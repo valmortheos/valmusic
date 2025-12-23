@@ -4,11 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#f8fafc" />
+    <meta name="description" content="Aplikasi pemutar musik modern, responsif, dan estetik dengan visualisasi gelombang audio." />
     <title>ValMusic</title>
+    
+    <!-- Tailwind CSS CDN (Keep for simplicity as per request) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- JSMediaTags for ID3 Metadata Reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    
     <script>
       tailwind.config = {
         theme: {
@@ -47,6 +54,8 @@
         color: #0f172a;
         overscroll-behavior-y: none;
         -webkit-tap-highlight-color: transparent;
+        margin: 0;
+        font-family: 'Plus Jakarta Sans', sans-serif;
       }
       
       /* Safe Area Utilities for Mobile */
@@ -78,18 +87,20 @@
   <script type="importmap">
 {
   "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "wavesurfer.js": "https://esm.sh/wavesurfer.js@^7.12.1"
   }
 }
 </script>
 </head>
   <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
