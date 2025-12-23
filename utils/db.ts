@@ -1,4 +1,5 @@
 
+
 import { Song } from '../types';
 
 const DB_NAME = 'ValMusicDB';
@@ -48,10 +49,17 @@ export const getAllSongsFromDB = async (): Promise<Song[]> => {
     request.onsuccess = () => {
       const songs = request.result as Song[];
       // Regenerate Blob URLs
-      const songsWithUrls = songs.map(song => ({
-        ...song,
-        url: URL.createObjectURL(song.file)
-      }));
+      const songsWithUrls = songs.map(song => {
+        // FIX: Cek apakah file ada sebelum membuat ObjectURL
+        if (song.file) {
+            return {
+                ...song,
+                url: URL.createObjectURL(song.file)
+            };
+        }
+        // Jika tidak ada file (misal lagu online atau data corrupt), kembalikan apa adanya
+        return song;
+      });
       resolve(songsWithUrls);
     };
     request.onerror = () => reject(request.error);
