@@ -1,8 +1,11 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { LyricLine, Song } from '../types';
 import { useLyrics } from '../hooks/useLyrics';
-import { Mic2, Edit3, Save, X } from './Icons';
+import { Mic2, Edit3, Save, X, Music } from './Icons';
+import { SYNCED_LYRICS_DB } from '../data/syncedLyricsDb';
+import { convertEnhancedLyrics } from '../utils/lyricsConverter';
+import SyncedLine from './lyrics/SyncedLine';
 
 interface LyricsManagerProps {
     song: Song;
@@ -21,54 +24,109 @@ const LyricsManager: React.FC<LyricsManagerProps> = ({
     const lyricsContainerRef = useRef<HTMLDivElement>(null);
     const [userIsScrolling, setUserIsScrolling] = useState(false);
     const scrollTimeoutRef = useRef<number | null>(null);
+    const lastScrollIndexRef = useRef<number>(-1);
 
-    // Load lirik ke editor saat mode edit aktif
+    // --- KONFIGURASI OFFSET ---
+    // Highlight Offset: Waktu kompensasi visual agar warna pas (0.1s - 0.2s)
+    const HIGHLIGHT_OFFSET = 0.2; 
+    
+    // Scroll Offset: "Pre-scroll" - Seberapa jauh ke depan (detik) lirik harus naik 
+    // sebelum dinyanyikan. 0.7s - 1.0s biasanya ideal untuk baca cepat.
+    const SCROLL_LOOKAHEAD = 0.7; 
+
+    // --- LOGIKA ENHANCED LYRICS (DB LOCAL) ---
+    const dbEnhancedLyrics = useMemo(() => {
+        const cleanStr = (s: string) => s.toLowerCase().trim().replace(/\s+/g, ' ');
+        const artist = cleanStr(song.artist);
+        const title = cleanStr(song.title);
+        
+        const keysToTry = [`${artist} - ${title}`, `${title} - ${artist}`, title];
+
+        for (const key of keysToTry) {
+            if (SYNCED_LYRICS_DB[key]) {
+                return convertEnhancedLyrics(SYNCED_LYRICS_DB[key]);
+            }
+        }
+
+        const foundKey = Object.keys(SYNCED_LYRICS_DB).find(k => {
+             const cleanKey = cleanStr(k);
+             return cleanKey.includes(title) && cleanKey.includes(artist);
+        });
+        
+        if (foundKey) return convertEnhancedLyrics(SYNCED_LYRICS_DB[foundKey]);
+        return null;
+    }, [song.id, song.title, song.artist]);
+
+    const activeLyrics = dbEnhancedLyrics || song.lyrics;
+
+    const isEnhanced = useMemo(() => {
+        if (dbEnhancedLyrics) return true;
+        if (song.lyrics && song.lyrics.some(line => line.words && line.words.length > 0)) return true;
+        return false;
+    }, [dbEnhancedLyrics, song.lyrics]);
+
     useEffect(() => {
         if (isEditing) {
-            if (song.lyrics && song.lyrics.length > 0) {
-                setRawText(stringifyLyrics(song.lyrics));
+            if (activeLyrics && activeLyrics.length > 0) {
+                setRawText(stringifyLyrics(activeLyrics));
             } else {
                 setRawText('');
             }
         }
-    }, [isEditing, song]);
+    }, [isEditing, activeLyrics]);
 
-    // Handle User Scroll Detection
     const handleScroll = () => {
         if (!isEditing) {
             setUserIsScrolling(true);
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
             scrollTimeoutRef.current = window.setTimeout(() => {
                 setUserIsScrolling(false);
-            }, 2500); // Resume auto-scroll after 2.5s inactivity
+            }, 2500); 
         }
     };
 
-    // Enhanced Auto Scroll Logic
+    // --- DUAL INDEX CALCULATION ---
+    
+    // 1. Highlight Index: Untuk pewarnaan (Sync Ketat)
+    const activeIndex = useMemo(() => {
+        return getActiveLyricIndex(activeLyrics, currentTime, HIGHLIGHT_OFFSET);
+    }, [activeLyrics, currentTime, getActiveLyricIndex]);
+
+    // 2. Scroll Index: Untuk posisi scroll (Sync Longgar / Lookahead)
+    const scrollIndex = useMemo(() => {
+        return getActiveLyricIndex(activeLyrics, currentTime, SCROLL_LOOKAHEAD);
+    }, [activeLyrics, currentTime, getActiveLyricIndex]);
+
+
+    // --- SCROLLING LOGIC ---
+    // Menggunakan useEffect yang bergantung pada `scrollIndex` (bukan activeIndex)
     useEffect(() => {
-        if (!isEditing && !userIsScrolling && song.lyrics && lyricsContainerRef.current) {
-            const activeIndex = getActiveLyricIndex(song.lyrics, currentTime);
+        // Cek validitas: mode baca, user tidak sedang scroll, container ada, index valid
+        if (!isEditing && !userIsScrolling && lyricsContainerRef.current && scrollIndex !== -1) {
             
-            if (activeIndex !== -1) {
-                const container = lyricsContainerRef.current;
-                const activeEl = container.children[activeIndex + 1] as HTMLElement; // +1 karena spacer atas
+            // Optimasi: Jangan scroll ulang jika index belum berubah
+            if (scrollIndex === lastScrollIndexRef.current) return;
+            lastScrollIndexRef.current = scrollIndex;
 
-                if (activeEl) {
-                    const containerHeight = container.offsetHeight;
-                    const elTop = activeEl.offsetTop;
-                    const elHeight = activeEl.offsetHeight;
+            const container = lyricsContainerRef.current;
+            // +1 karena ada spacer div di awal container
+            const targetEl = container.children[scrollIndex + 1] as HTMLElement; 
 
-                    // Kalkulasi posisi agar elemen ada di tengah persis
-                    const targetScrollTop = elTop - (containerHeight / 2) + (elHeight / 2);
+            if (targetEl) {
+                const containerHeight = container.offsetHeight;
+                const elTop = targetEl.offsetTop;
+                const elHeight = targetEl.offsetHeight;
+                
+                // Kalkulasi posisi tengah persis
+                const targetScrollTop = elTop - (containerHeight / 2) + (elHeight / 2);
 
-                    container.scrollTo({
-                        top: targetScrollTop,
-                        behavior: 'smooth'
-                    });
-                }
+                container.scrollTo({
+                    top: targetScrollTop,
+                    behavior: 'smooth' 
+                });
             }
         }
-    }, [currentTime, isEditing, song, getActiveLyricIndex, userIsScrolling]);
+    }, [scrollIndex, isEditing, userIsScrolling]);
 
     const handleSave = () => {
         const parsed = parseLyrics(rawText);
@@ -94,19 +152,26 @@ const LyricsManager: React.FC<LyricsManagerProps> = ({
                     onChange={(e) => setRawText(e.target.value)}
                     placeholder={`Contoh Format:\n[00:14.50] Baris lirik pertama\n[00:18.20] Baris lirik kedua...`}
                     spellCheck={false}
+                    disabled={isEnhanced} 
                 />
                 
-                <button 
-                    onClick={handleSave} 
-                    className="mt-4 w-full py-3 rounded-xl font-bold bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                    <Save size={18} /> Simpan Lirik
-                </button>
+                {isEnhanced ? (
+                    <div className="mt-4 p-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold text-center border border-blue-100">
+                        Lirik disinkronisasi otomatis (Enhanced). Tidak dapat diedit manual.
+                    </div>
+                ) : (
+                    <button 
+                        onClick={handleSave} 
+                        className="mt-4 w-full py-3 rounded-xl font-bold bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                        <Save size={18} /> Simpan Lirik
+                    </button>
+                )}
             </div>
         );
     }
 
-    if (!song.lyrics || song.lyrics.length === 0) {
+    if (!activeLyrics || activeLyrics.length === 0) {
         return (
             <div className="w-full h-full flex flex-col items-center justify-center text-center animate-fade-in relative z-20">
                 <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-4 text-white border border-white/30 shadow-lg">
@@ -124,45 +189,56 @@ const LyricsManager: React.FC<LyricsManagerProps> = ({
         );
     }
 
-    const activeIndex = getActiveLyricIndex(song.lyrics, currentTime);
-
     return (
         <div className="w-full h-full flex flex-col animate-fade-in py-2 relative z-20">
+            {isEnhanced && (
+                <div className="absolute top-0 right-4 z-30">
+                     <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
+                        <Music size={8} /> SYNCED
+                     </span>
+                </div>
+            )}
+
             <div 
-                className="flex-1 overflow-y-auto lyrics-container text-center px-4 md:px-8 space-y-6 no-scrollbar" 
+                className="flex-1 overflow-y-auto lyrics-container text-center px-4 md:px-6 space-y-7 no-scrollbar" 
                 ref={lyricsContainerRef}
                 onScroll={handleScroll}
                 onTouchMove={handleScroll}
                 style={{
-                    // Gradient mask untuk efek fade di atas dan bawah
                     maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
                     WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)'
                 }}
             >
-                {/* Spacer Atas untuk centering lirik pertama */}
+                {/* Spacer Atas - Proporsional agar lirik pertama bisa ke tengah */}
                 <div className="h-[45%] flex-shrink-0 w-full"></div>
                 
-                {song.lyrics.map((line, idx) => {
+                {activeLyrics.map((line, idx) => {
                     const isActive = idx === activeIndex;
-                    const isNear = Math.abs(idx - activeIndex) <= 1;
                     
+                    // Style logic menggunakan 'isActive' (Highlight Index), bukan Scroll Index
                     return (
-                        <p 
+                        <div 
                             key={`${idx}-${line.time}`} 
                             className={`
-                                transition-all duration-700 ease-[cubic-bezier(0.25,0.4,0.25,1)] cursor-pointer origin-center font-sans tracking-tight leading-normal
+                                transition-all duration-500 ease-out cursor-pointer font-sans tracking-tight leading-relaxed
+                                text-xl md:text-3xl font-bold
                                 ${isActive 
-                                    ? 'text-2xl md:text-4xl font-extrabold scale-110 py-2 opacity-100 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-[var(--color-primary)] drop-shadow-sm filter brightness-110' 
-                                    : isNear 
-                                        ? 'text-lg md:text-xl font-semibold text-gray-500/80 scale-100 blur-[0.3px] opacity-80'
-                                        : 'text-sm md:text-base font-medium text-gray-400/40 scale-95 blur-[0.8px] opacity-50'
+                                    ? 'opacity-100 scale-100 blur-0 text-gray-900 z-10'  // Active
+                                    : 'opacity-40 scale-100 blur-[1px] text-gray-500 z-0' // Inactive
                                 }
-                                hover:opacity-100 hover:blur-0 hover:scale-105 hover:text-gray-700
+                                hover:opacity-80 hover:blur-0
                             `}
                             onClick={() => onSeek(line.time)}
                         >
-                            {line.text}
-                        </p>
+                            <SyncedLine 
+                                text={line.text}
+                                words={line.words}
+                                currentTime={currentTime}
+                                isActive={isActive}
+                                isNear={false} 
+                                onSeek={onSeek}
+                            />
+                        </div>
                     )
                 })}
                 

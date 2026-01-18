@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect, useCallback } from 'react';
 import { Song, UserProfile } from '../types';
 import { saveSongToDB, getAllSongsFromDB, deleteSongFromDB } from '../utils/db';
@@ -48,6 +47,28 @@ export const useAudioPlayer = () => {
   useEffect(() => {
     document.documentElement.style.setProperty('--color-primary', userProfile.themeColor);
   }, [userProfile.themeColor]);
+
+  // Sync currentSong with songs list updates (e.g. metadata loaded)
+  // FIX: Ini penting agar saat metadata (Cover/Judul) dari Cloud terload, player UI ikut update
+  useEffect(() => {
+    if (currentSong) {
+      const updatedSong = songs.find(s => s.id === currentSong.id);
+      // Hanya update jika referensi objek berbeda tetapi ID sama
+      if (updatedSong && updatedSong !== currentSong) {
+        setCurrentSong(updatedSong);
+        
+        // Update palette jika cover art berubah
+        if (updatedSong.coverArt !== currentSong.coverArt) {
+             if (updatedSong.coverArt) {
+                getColorPalette(updatedSong.coverArt).then(palette => {
+                    setColorPalette(palette);
+                    setUserProfile(prev => ({ ...prev, themeColor: palette[0] }));
+                });
+             }
+        }
+      }
+    }
+  }, [songs]);
 
   const playSong = useCallback(async (song: Song) => {
     if (currentSong?.id === song.id) {

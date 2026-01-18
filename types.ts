@@ -1,8 +1,14 @@
 
+export interface LyricWord {
+  word: string;
+  start: number; // seconds
+  end: number;   // seconds
+}
 
 export interface LyricLine {
   time: number; // in seconds
   text: string;
+  words?: LyricWord[]; // Optional: For word-by-word sync
 }
 
 export interface Song {
@@ -12,6 +18,7 @@ export interface Song {
   album: string;
   duration: number; // in seconds
   url: string; // blob url or http url
+  lyricsUrl?: string; // New: Dynamic lyrics URL
   file?: File; // Optional now, because online songs don't have File object
   coverArt?: string; // URL for cover art
   lyrics?: LyricLine[];

@@ -30,8 +30,18 @@ const parseSongFromUrl = (url: string): Song => {
         title = parts.slice(1).join(' - ').trim();
     }
 
-    // 4. Buat ID unik berdasarkan URL agar konsisten
-    // Kita gunakan btoa (base64) dari filename agar unik dan reproducible
+    // 4. Construct Dynamic Lyrics URL
+    // Pola: BaseURL/lyrics/Filename.json
+    // Kita gunakan raw URL string manipulation untuk menjaga encoding (%20) tetap valid di HTTP request
+    const lastSlashIndex = url.lastIndexOf('/');
+    const baseUrl = url.substring(0, lastSlashIndex + 1);
+    // Ambil filename raw dari URL (masih encoded) tapi buang ekstensi
+    const rawFilename = url.substring(lastSlashIndex + 1);
+    const rawFilenameNoExt = rawFilename.replace(/\.[^/.]+$/, "");
+    
+    const lyricsUrl = `${baseUrl}lyrics/${rawFilenameNoExt}.json`;
+
+    // 5. Buat ID unik berdasarkan URL agar konsisten
     const id = `cloud-${btoa(filename).replace(/=/g, '').substring(0, 10)}`;
 
     return {
@@ -41,6 +51,7 @@ const parseSongFromUrl = (url: string): Song => {
         album: "ValMusic Cloud", // Album default untuk lagu streaming
         duration: 0, // Akan terisi saat di-load player
         url: url,
+        lyricsUrl: lyricsUrl, // URL Lirik Otomatis
         format: extension,
         isOnline: true,
         coverArt: undefined, // Bisa diisi URL gambar default jika mau

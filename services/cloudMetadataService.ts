@@ -1,22 +1,44 @@
 
 import { Song } from '../types';
+import { convertEnhancedLyrics } from '../utils/lyricsConverter';
 
 /**
  * Mengambil Blob dari URL Remote, membaca metadata ID3,
  * dan mengembalikan update partial untuk objek Song.
+ * SEKARANG JUGA FETCH LIRIK JSON.
  */
 export const fetchAndParseCloudMetadata = async (song: Song): Promise<Partial<Song> | null> => {
     try {
-        // 1. Fetch File Blob
-        const response = await fetch(song.url);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const blob = await response.blob();
+        // Parallel Fetch: Audio Blob & Lyrics JSON
+        const promises: Promise<any>[] = [
+            fetch(song.url).then(res => res.ok ? res.blob() : null)
+        ];
+
+        if (song.lyricsUrl) {
+            promises.push(
+                fetch(song.lyricsUrl).then(res => res.ok ? res.json() : null).catch(() => null)
+            );
+        }
+
+        const [blob, lyricsJson] = await Promise.all(promises);
+
+        if (!blob) throw new Error('Failed to fetch audio blob');
 
         // 2. Buat Local Blob URL (Cache Memory)
-        // Ini agar WaveSurfer nanti play dari memori, bukan fetch ulang ke Vercel
         const localBlobUrl = URL.createObjectURL(blob);
 
-        // 3. Baca Metadata menggunakan JSMediaTags
+        // 3. Proses Lirik (Jika ada)
+        let parsedLyrics = undefined;
+        if (lyricsJson) {
+            try {
+                parsedLyrics = convertEnhancedLyrics(lyricsJson);
+                console.log(`[Cloud] Lyrics loaded for ${song.title}`);
+            } catch (e) {
+                console.warn("Failed to parse cloud lyrics", e);
+            }
+        }
+
+        // 4. Baca Metadata menggunakan JSMediaTags
         return new Promise((resolve) => {
             // @ts-ignore
             if (typeof window.jsmediatags !== 'undefined') {
@@ -41,33 +63,38 @@ export const fetchAndParseCloudMetadata = async (song: Song): Promise<Partial<So
                         const sizeInMB = (blob.size / (1024 * 1024)).toFixed(1) + ' MB';
 
                         resolve({
-                            title: tags.title || song.title, // Prioritas metadata, fallback ke filename
+                            title: tags.title || song.title, // Prioritas metadata
                             artist: tags.artist || song.artist,
                             album: tags.album || "Cloud Collection",
                             year: tags.year,
                             genre: tags.genre,
                             coverArt: coverArt,
-                            url: localBlobUrl, // Update URL ke versi Blob lokal (Cache)
+                            url: localBlobUrl, // Update URL ke versi Blob lokal
                             fileSize: sizeInMB,
-                            duration: 0 // Duration akan didapat saat audio di-load WaveSurfer
+                            duration: 0,
+                            lyrics: parsedLyrics || song.lyrics // Gunakan lirik hasil fetch jika ada
                         });
                     },
                     onError: (error: any) => {
                         console.warn(`Gagal baca ID3 ${song.title}:`, error);
-                        // Tetap return blob url agar playable meski metadata gagal
+                        // Tetap return data yang berhasil didapat
                         resolve({ 
                             url: localBlobUrl,
-                            fileSize: (blob.size / (1024 * 1024)).toFixed(1) + ' MB'
+                            fileSize: (blob.size / (1024 * 1024)).toFixed(1) + ' MB',
+                            lyrics: parsedLyrics
                         }); 
                     }
                 });
             } else {
-                resolve({ url: localBlobUrl });
+                resolve({ 
+                    url: localBlobUrl,
+                    lyrics: parsedLyrics
+                });
             }
         });
 
     } catch (error) {
-        console.error("Error fetching cloud song:", error);
+        console.error("Error fetching cloud song data:", error);
         return null;
     }
 };
