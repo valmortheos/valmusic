@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { ViewState, LyricLine, Song } from './types';
@@ -9,6 +7,7 @@ import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useSleepTimer } from './hooks/useSleepTimer';
 import { useLibrary } from './hooks/useLibrary';
 import { usePreloadedSongs } from './hooks/usePreloadedSongs';
+import { useCloudLibrary } from './hooks/useCloudLibrary'; 
 import MiniPlayer from './components/MiniPlayer';
 import FullPlayer from './components/FullPlayer';
 import AudioController from './components/AudioController';
@@ -16,7 +15,7 @@ import SleepTimerModal from './components/SleepTimerModal';
 import MainContent from './components/MainContent';
 import { Navigation } from './components/Views';
 import { Header } from './components/Header';
-import { ToastProvider } from './context/ToastContext'; // Import Provider
+import { ToastProvider } from './context/ToastContext';
 
 // Declare jsmediatags globally
 declare global {
@@ -35,11 +34,13 @@ const ValMusicApp: React.FC = () => {
     toggleFavorite 
   } = useAudioPlayer();
 
-  // --- Preloaded Songs Logic (NEW) ---
+  // --- 1. Load Local Assets (assets/music) ---
   usePreloadedSongs(songs, setSongs);
 
-  // --- Library Logic (sekarang bisa akses useToast karena di dalam Provider) ---
-  // Added: handleFolderScan, isScanning
+  // --- 2. Load Cloud Streaming Songs (Vercel Blob) - NEW ---
+  useCloudLibrary(songs, setSongs);
+
+  // --- Library Logic ---
   const { handleFileUpload, handleFolderScan, isScanning } = useLibrary(songs, setSongs, playSong, currentSong);
 
   // --- Sleep Timer Hook ---
@@ -52,10 +53,22 @@ const ValMusicApp: React.FC = () => {
   const [isPlayerExpanded, setIsPlayerExpanded] = useState(false);
   const [isTimerModalOpen, setIsTimerModalOpen] = useState(false);
   
+  // --- Loading/Buffering State (Interactive Loading) ---
+  const [isBuffering, setIsBuffering] = useState(false);
+  
   // --- Waveform & Time Sync State ---
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
+
+  // Reset buffering & time on song change
+  useEffect(() => {
+    if (currentSong) {
+        setIsBuffering(true); // Mulai loading saat lagu berganti
+        setCurrentTime(0);
+        setDuration(0);
+    }
+  }, [currentSong?.id]);
 
   // --- Sync Timer ---
   useEffect(() => {
@@ -70,18 +83,12 @@ const ValMusicApp: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  // Reset time on song change
-  useEffect(() => {
-    setCurrentTime(0);
-    setDuration(0);
-  }, [currentSong?.id]);
-
   const handleSaveLyrics = async (id: string, lyrics: LyricLine[]) => {
     const updatedSongs = songs.map(s => s.id === id ? { ...s, lyrics } : s);
     setSongs(updatedSongs);
     
     const updatedSong = updatedSongs.find(s => s.id === id);
-    if(updatedSong && !id.startsWith('preloaded-')) {
+    if(updatedSong && !id.startsWith('preloaded-') && !id.startsWith('cloud-')) {
         await saveSongToDB(updatedSong);
     }
 
@@ -90,18 +97,18 @@ const ValMusicApp: React.FC = () => {
     }
   };
 
-  // Update song duration in DB when audio loads successfully
+  // Update song duration & Stop Buffering
   const handleAudioReady = (d: number) => {
       setDuration(d);
+      setIsBuffering(false); // Audio siap, matikan loading
       
-      // Update duration in DB if it was 0 (newly imported song)
       if (currentSong && currentSong.duration === 0) {
           const updatedSong = { ...currentSong, duration: d };
-          // Update State
+          
           setSongs(prev => prev.map(s => s.id === currentSong.id ? updatedSong : s));
           setCurrentSong(updatedSong);
-          // Save to DB
-          if(!currentSong.id.startsWith('preloaded-')) {
+          
+          if(!currentSong.id.startsWith('preloaded-') && !currentSong.isOnline) {
             saveSongToDB(updatedSong);
           }
       }
@@ -142,6 +149,7 @@ const ValMusicApp: React.FC = () => {
         <MiniPlayer 
           currentSong={currentSong} 
           isPlaying={isPlaying} 
+          isBuffering={isBuffering}
           onTogglePlay={togglePlay} 
           onNext={() => handleNext(false)} 
           onPrev={handlePrev} 
@@ -153,6 +161,7 @@ const ValMusicApp: React.FC = () => {
         <FullPlayer 
           currentSong={currentSong}
           isPlaying={isPlaying}
+          isBuffering={isBuffering}
           isExpanded={isPlayerExpanded}
           onCollapse={() => setIsPlayerExpanded(false)}
           onNext={() => handleNext(false)}

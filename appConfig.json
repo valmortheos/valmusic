@@ -1,0 +1,83 @@
+{
+  "general": {
+    "appName": "ValMusic",
+    "bundleId": "com.valmortheos.valmusic",
+    "version": "1.0.0",
+    "initialUrl": "index.html",
+    "userAgentAdd": "ValMusicNative/1.0",
+    "forceLandscape": false,
+    "fullScreen": false
+  },
+  "permissions": {
+    "android": {
+      "manifest": [
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "ios": {
+      "privacy": {
+        "NSAppleMusicUsageDescription": "ValMusic membutuhkan akses ke pustaka media Anda untuk memutar lagu lokal dan menampilkan cover art.",
+        "NSFileProviderDomainUsageDescription": "Akses diperlukan untuk membaca file lirik (.lrc) dan audio dari penyimpanan perangkat."
+      }
+    }
+  },
+  "services": {
+    "backgroundMedia": {
+      "active": true,
+      "showNotification": true,
+      "lockScreenControls": true,
+      "title": "ValMusic",
+      "artist": "Now Playing"
+    },
+    "fileManager": {
+      "active": true,
+      "upload": true,
+      "download": true,
+      "provider": "default"
+    },
+    "connectivity": {
+      "active": true
+    },
+    "screenOrientation": {
+      "active": true,
+      "allowRotation": true
+    }
+  },
+  "styling": {
+    "statusBar": "light",
+    "statusBarColor": "#f8fafc",
+    "navigationBarColor": "#f8fafc",
+    "androidTheme": "light",
+    "splashScreen": {
+      "backgroundColor": "#f8fafc",
+      "image": "assets/icon.png",
+      "time": 2000
+    },
+    "font": {
+      "family": "Plus Jakarta Sans",
+      "size": "100%"
+    }
+  },
+  "navigation": {
+    "topBar": {
+      "active": false
+    },
+    "sidebar": {
+      "active": false
+    },
+    "pullToRefresh": false,
+    "swipeGestures": false
+  },
+  "android": {
+    "hardwareAcceleration": true,
+    "allowFileAccess": true,
+    "allowContentAccess": true
+  }
+}

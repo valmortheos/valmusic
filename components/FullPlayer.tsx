@@ -4,7 +4,7 @@ import WaveSurfer from 'wavesurfer.js';
 import { 
   Play, Pause, SkipBack, SkipForward, Music, 
   ChevronDown, MoreVertical, Mic2, Heart,
-  Shuffle, Repeat, Repeat1
+  Shuffle, Repeat, Repeat1, Loader
 } from './Icons';
 import ProgressBar from './ProgressBar';
 import PlayerMenu from './PlayerMenu';
@@ -19,6 +19,7 @@ import { useAlternatingText } from '../hooks/useUIHooks';
 interface FullPlayerProps {
   currentSong: Song | null;
   isPlaying: boolean;
+  isBuffering?: boolean; // New Prop
   isExpanded: boolean;
   onCollapse: () => void;
   onNext: () => void;
@@ -45,7 +46,7 @@ interface FullPlayerProps {
 }
 
 const FullPlayer: React.FC<FullPlayerProps> = ({
-  currentSong, isPlaying, isExpanded, onCollapse, 
+  currentSong, isPlaying, isBuffering = false, isExpanded, onCollapse, 
   onNext, onPrev, onTogglePlay, onSaveLyrics, onDelete,
   waveSurferRef, currentTime, duration, setDuration,
   isShuffle, toggleShuffle, repeatMode, toggleRepeat,
@@ -74,7 +75,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   };
   
   const bottomLabel = useAlternatingText(
-    "ValMusic", 
+    isBuffering ? "Memuat Audio..." : "ValMusic", 
     timeLeft !== null ? formatTimer(timeLeft) : null,
     4000
   );
@@ -93,7 +94,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   };
 
   const handleSeek = (time: number) => {
-      if(waveSurferRef.current) {
+      if(waveSurferRef.current && !isBuffering) {
           waveSurferRef.current.setTime(time);
       }
   };
@@ -146,11 +147,18 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
                 />
               ) : (
                 <div className="flex flex-col w-full h-full animate-fade-in justify-center pb-8">
-                   {/* Cover Art Container - 2. REVISED SIZE TO 65% to fix overlap */}
+                   {/* Cover Art Container */}
                    <div className="flex-shrink-1 flex items-center justify-center w-full mb-2 mt-4">
                        <div className="relative w-[65%] aspect-square rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] overflow-hidden group border border-white/20">
+                         {/* Loading Overlay for Cover */}
+                         {isBuffering && (
+                             <div className="absolute inset-0 z-20 bg-black/20 backdrop-blur-[2px] flex items-center justify-center">
+                                 <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                             </div>
+                         )}
+                         
                          {currentSong.coverArt ? (
-                           <img src={currentSong.coverArt} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]" alt="Art" />
+                           <img src={currentSong.coverArt} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s] ${isBuffering ? 'scale-105 blur-sm' : ''}`} alt="Art" />
                          ) : (
                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
                              <Music size={80} />
@@ -182,15 +190,25 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             {/* 3. Controls */}
             <div className="flex-shrink-0 w-full mb-4 px-2 relative z-20">
                <div className="mb-6">
-                  <ProgressBar 
-                    currentTime={currentTime} 
-                    duration={duration} 
-                    onSeek={handleSeek} 
-                    color={primaryColor}
-                  />
+                  {isBuffering ? (
+                      // Skeleton Loading Bar
+                      <div className="w-full h-10 flex items-center">
+                          <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-[var(--color-primary)] opacity-50 w-1/3 animate-[shimmer_1.5s_infinite_linear] translate-x-[-100%]"></div>
+                          </div>
+                      </div>
+                  ) : (
+                      <ProgressBar 
+                        currentTime={currentTime} 
+                        duration={duration} 
+                        onSeek={handleSeek} 
+                        color={primaryColor}
+                      />
+                  )}
+                  
                   <div className="flex justify-between text-xs font-bold text-gray-400 font-mono mt-1 px-1">
                     <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
+                    <span>{isBuffering ? '--:--' : formatTime(duration)}</span>
                   </div>
                </div>
 
@@ -210,7 +228,8 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
                   <div className="flex items-center gap-6 md:gap-8">
                       <button 
                         onClick={onPrev} 
-                        className="p-3 hover:scale-110 active:scale-95 focus:outline-none transition-transform"
+                        disabled={isBuffering}
+                        className="p-3 hover:scale-110 active:scale-95 focus:outline-none transition-transform disabled:opacity-50"
                         style={{ 
                             color: primaryColor, 
                             filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
@@ -222,6 +241,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
                       <button 
                        onClick={onTogglePlay}
+                       disabled={isBuffering}
                        className="w-20 h-20 rounded-full flex items-center justify-center hover:scale-105 transition-all active:scale-95 focus:outline-none border-4 border-white/50"
                        style={{ 
                            backgroundColor: primaryColor,
@@ -230,12 +250,19 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
                            ...noTapHighlight 
                        }}
                       >
-                        {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+                        {isBuffering ? (
+                            <Loader size={32} className="animate-spin" />
+                        ) : isPlaying ? (
+                            <Pause size={32} fill="currentColor" />
+                        ) : (
+                            <Play size={32} fill="currentColor" className="ml-1" />
+                        )}
                       </button>
 
                       <button 
                         onClick={() => onNext()} 
-                        className="p-3 hover:scale-110 active:scale-95 focus:outline-none transition-transform"
+                        disabled={isBuffering}
+                        className="p-3 hover:scale-110 active:scale-95 focus:outline-none transition-transform disabled:opacity-50"
                         style={{ 
                             color: primaryColor, 
                             filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
@@ -311,6 +338,12 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         onClose={() => setIsInfoModalOpen(false)}
         song={currentSong}
     />
+    <style>{`
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(300%); }
+        }
+    `}</style>
     </>
   );
 };

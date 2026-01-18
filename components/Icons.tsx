@@ -36,7 +36,8 @@ import {
   UserCheck,
   ArrowLeft,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader
 } from 'lucide-react';
 
 export {
@@ -76,5 +77,6 @@ export {
   UserCheck,
   ArrowLeft,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader
 };

@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { Play, Pause, SkipBack, SkipForward, Music } from './Icons';
+import { Play, Pause, SkipBack, SkipForward, Music, Loader } from './Icons';
 import { Song } from '../types';
 import MarqueeText from './MarqueeText';
 
 interface MiniPlayerProps {
   currentSong: Song | null;
   isPlaying: boolean;
+  isBuffering?: boolean; // New Prop
   onTogglePlay: () => void;
   onNext: () => void;
   onPrev: () => void;
@@ -16,7 +17,7 @@ interface MiniPlayerProps {
 }
 
 const MiniPlayer: React.FC<MiniPlayerProps> = ({ 
-  currentSong, isPlaying, onTogglePlay, onNext, onPrev, onExpand, colorPalette, songCount = 0
+  currentSong, isPlaying, isBuffering = false, onTogglePlay, onNext, onPrev, onExpand, colorPalette, songCount = 0
 }) => {
   if (!currentSong) return null;
 
@@ -44,7 +45,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({
       <div className="relative z-10 flex items-center gap-3 overflow-hidden flex-1">
         {/* Vinyl Effect Container */}
         <div className="relative w-12 h-12 flex-shrink-0">
-            <div className={`w-full h-full bg-white/50 overflow-hidden shadow-sm border border-white/20 transition-all duration-700 ease-in-out ${isPlaying ? 'rounded-full animate-[spin_4s_linear_infinite]' : 'rounded-xl'}`}>
+            <div className={`w-full h-full bg-white/50 overflow-hidden shadow-sm border border-white/20 transition-all duration-700 ease-in-out ${isPlaying && !isBuffering ? 'rounded-full animate-[spin_4s_linear_infinite]' : 'rounded-xl'}`}>
             {currentSong.coverArt ? (
                 <img 
                     src={currentSong.coverArt} 
@@ -54,8 +55,15 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({
             ) : (
                 <div className="w-full h-full flex items-center justify-center text-[var(--color-primary)]"><Music size={20} /></div>
             )}
-            <div className={`absolute inset-0 m-auto w-3 h-3 bg-white/80 rounded-full border border-gray-200 transition-opacity duration-500 ${isPlaying ? 'opacity-100' : 'opacity-0'}`}></div>
+            <div className={`absolute inset-0 m-auto w-3 h-3 bg-white/80 rounded-full border border-gray-200 transition-opacity duration-500 ${isPlaying && !isBuffering ? 'opacity-100' : 'opacity-0'}`}></div>
             </div>
+            
+            {/* Loading Overlay on Cover */}
+            {isBuffering && (
+                <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center backdrop-blur-[1px]">
+                    <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                </div>
+            )}
         </div>
 
         <div className="flex flex-col overflow-hidden min-w-0 pr-2 w-full">
@@ -73,6 +81,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({
                 onClick={onPrev} 
                 className="p-2 transition-colors hover:bg-white/50 rounded-full active:scale-90"
                 style={{ color: primaryColor }}
+                disabled={isBuffering}
              >
                <SkipBack size={20} fill="currentColor" />
              </button>
@@ -80,17 +89,24 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({
          
          <button 
           onClick={onTogglePlay}
+          disabled={isBuffering}
           className="w-10 h-10 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all active:scale-90"
           style={{ backgroundColor: primaryColor }}
          >
-           {/* Visual Centering: ml-0.5 atau ml-1 pada Play agar segitiga terlihat di tengah */}
-           {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
+           {isBuffering ? (
+               <Loader size={18} className="animate-spin" />
+           ) : isPlaying ? (
+               <Pause size={18} fill="currentColor" />
+           ) : (
+               <Play size={18} fill="currentColor" className="ml-0.5" />
+           )}
          </button>
          
          <button 
             onClick={onNext} 
             className="p-2 transition-colors hover:bg-white/50 rounded-full active:scale-90"
             style={{ color: primaryColor }}
+            disabled={isBuffering}
          >
            <SkipForward size={20} fill="currentColor" />
          </button>

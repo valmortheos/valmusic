@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Song } from '../types';
-import { Disc, Mic2, Music, ChevronDown, Play, Pause } from './Icons';
+import { Disc, Mic2, Music, ChevronDown, Play, Pause, Cloud } from './Icons';
 import ArtistPlaylist from './library/ArtistPlaylist';
 
 // --- HELPER TYPES ---
@@ -59,7 +59,7 @@ export const AlbumView: React.FC<BaseViewProps> = ({ songs, playSong, currentSon
              {albumCover ? (
                <img src={albumCover} className="w-full h-full object-cover" alt={selectedAlbum} />
              ) : (
-               <div className="w-full h-full flex items-center justify-center text-gray-400"><Disc size={64} /></div>
+               <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-100 to-gray-200"><Disc size={64} /></div>
              )}
           </div>
           <div className="flex flex-col items-center md:items-start text-center md:text-left flex-1">
@@ -91,8 +91,9 @@ export const AlbumView: React.FC<BaseViewProps> = ({ songs, playSong, currentSon
                     <Play size={16} fill="currentColor"/>
                 </div>
                 
-                <div className="flex-1 font-semibold text-gray-800 truncate px-2">
-                   <div className={currentSong?.id === song.id ? 'text-[var(--color-primary)] font-bold' : ''}>{song.title}</div>
+                <div className="flex-1 font-semibold text-gray-800 truncate px-2 flex items-center gap-2">
+                   <div className={`truncate ${currentSong?.id === song.id ? 'text-[var(--color-primary)] font-bold' : ''}`}>{song.title}</div>
+                   {song.isOnline && <Cloud size={12} className="text-sky-400 flex-shrink-0" fill="currentColor" />}
                 </div>
                 <div className="text-xs text-gray-400 font-mono font-medium bg-gray-100 px-2 py-1 rounded">
                   {Math.floor(song.duration / 60)}:{(Math.floor(song.duration % 60)).toString().padStart(2, '0')}
@@ -126,7 +127,7 @@ export const AlbumView: React.FC<BaseViewProps> = ({ songs, playSong, currentSon
                     {cover ? (
                       <img src={cover} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={albumName} />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300"><Disc size={40}/></div>
+                      <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gradient-to-tr from-gray-50 to-gray-100"><Disc size={40}/></div>
                     )}
                     <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <div className="bg-white/90 p-3 rounded-full shadow-lg transform scale-50 group-hover:scale-100 transition-transform">
