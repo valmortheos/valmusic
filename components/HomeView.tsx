@@ -85,7 +85,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex-1 min-h-0 relative">
             {displayedSongs.length > 0 ? (
               <div 
-                className="grid grid-rows-3 grid-flow-col gap-x-4 gap-y-3 overflow-x-auto snap-x snap-mandatory no-scrollbar h-full px-2 pb-2 content-start"
+                className="grid grid-rows-[repeat(3,auto)] grid-flow-col gap-x-4 gap-y-3 overflow-x-auto snap-x snap-mandatory no-scrollbar h-full px-2 pb-2 content-start"
                 style={{
                     // Lebar kolom dinamis: lebar layar dikurangi padding, atau fix 300px di desktop
                     gridAutoColumns: 'max(85vw, 320px)',
